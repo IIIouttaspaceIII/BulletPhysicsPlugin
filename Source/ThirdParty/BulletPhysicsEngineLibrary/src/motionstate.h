@@ -1,7 +1,7 @@
 #pragma once
 
-#include "BulletPhysicsEngineLibrary/BulletMinimal.h"
-#include "BulletPhysicsEngineLibrary/src/bthelper.h"
+#include "ThirdParty/BulletPhysicsEngineLibrary/BulletMinimal.h"
+#include "ThirdParty/BulletPhysicsEngineLibrary/src/bthelper.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -14,7 +14,6 @@ protected:
 	TWeakObjectPtr<AActor> Parent;
 	// Bullet is made local so that all sims are close to origin
 	// This world origin must be in *UE dimensions*
-	FVector WorldOrigin;
 	btTransform CenterOfMassTransform;
 
 
@@ -23,8 +22,8 @@ public:
 	{
 
 	}
-	BulletCustomMotionState(AActor* ParentActor, const FVector& WorldCentre, const btTransform& CenterOfMassOffset = btTransform::getIdentity())
-		: Parent(ParentActor), WorldOrigin(WorldCentre), CenterOfMassTransform(CenterOfMassOffset)
+	BulletCustomMotionState(AActor* ParentActor, const btTransform& CenterOfMassOffset = btTransform::getIdentity())
+		: Parent(ParentActor), CenterOfMassTransform(CenterOfMassOffset)
 
 	{
 	}
@@ -35,7 +34,7 @@ public:
 		if (Parent.IsValid())
 		{
 			auto&& Xform = Parent->GetActorTransform();
-			OutCenterOfMassWorldTrans = BulletHelpers::ToBt(Parent->GetActorTransform(), WorldOrigin) * CenterOfMassTransform.inverse();
+			OutCenterOfMassWorldTrans = BulletHelpers::ToBt(Parent->GetActorTransform()) * CenterOfMassTransform.inverse();
 		}
 
 	}
@@ -46,7 +45,7 @@ public:
 		if (Parent.IsValid(false))
 		{
 			btTransform GraphicTrans = CenterOfMassWorldTrans * CenterOfMassTransform;
-			Parent->SetActorTransform(BulletHelpers::ToUE(GraphicTrans, WorldOrigin));
+			Parent->SetActorTransform(BulletHelpers::ToUE(GraphicTrans));
 		}
 }
 };
