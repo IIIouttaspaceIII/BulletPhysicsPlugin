@@ -153,6 +153,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
 	void GetPhysicsState(int ID, FTransform& transforms, FVector& Velocity, FVector& AngularVelocity, FVector& Force);
 	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
+	FTransform GetPhysicsTransform(int ID);
+	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
 	void ResetSim();
 
 	UPROPERTY(BlueprintAssignable, Category = "Delegates")

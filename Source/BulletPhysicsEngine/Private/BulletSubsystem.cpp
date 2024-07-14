@@ -494,6 +494,14 @@ void UBulletSubsystem::GetPhysicsState(int ID, FTransform& transforms, FVector& 
 	}
 }
 
+FTransform UBulletSubsystem::GetPhysicsTransform(int ID)
+{
+	if (BtRigidBodies[ID]) {
+		return BulletHelpers::ToUE(BtRigidBodies[ID]->getWorldTransform());
+	}
+	return FTransform();
+}
+
 void UBulletSubsystem::ResetSim()
 {
 
