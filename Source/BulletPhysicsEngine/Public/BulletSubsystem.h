@@ -161,6 +161,8 @@ public:
 	// Method to trigger the delegate
 	void TriggerOnPhysicsTick(float DeltaTime);
 
+	FVector GetVelocityAtWorldPoint(int ID, FVector WorldLocation);
+
 protected:
 	FTickerDelegate OnTickDelegate;
 	FTSTicker::FDelegateHandle OnTickHandle;

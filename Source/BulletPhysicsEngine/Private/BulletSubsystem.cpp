@@ -28,6 +28,13 @@ void UBulletSubsystem::TriggerOnPhysicsTick(float DeltaTime)
 	OnPhysicsTick.Broadcast(DeltaTime);
 }
 
+FVector UBulletSubsystem::GetVelocityAtWorldPoint(int ID, FVector WorldLocation) {
+	const auto& body = BtRigidBodies[ID];
+	const auto CentreOfMass = body->getCenterOfMassPosition();
+	
+	return BulletHelpers::ToUEDir(body->getLinearVelocity() + btCross(body->getAngularVelocity(), BulletHelpers::ToBtPos(WorldLocation) - CentreOfMass));
+}
+
 void UBulletSubsystem::SetupStaticGeometryPhysics(TArray<AActor*> Actors, float Friction, float Restitution)
 {
 	for (AActor* Actor : Actors)
@@ -102,7 +109,6 @@ void UBulletSubsystem::UpdatePlayertransform(AActor* player, int ID)
 
 void UBulletSubsystem::AddImpulse(int ID, FVector Impulse, FVector Location)
 {
-
 	BtRigidBodies[ID]->applyImpulse(BulletHelpers::ToBtDir(Impulse, true), BulletHelpers::ToBtPos(Location));
 }
 
