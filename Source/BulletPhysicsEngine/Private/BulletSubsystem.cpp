@@ -1,4 +1,5 @@
 #include "BulletSubsystem.h"
+#include "../../../../../Source/CarPluginProject/Public/XECSClasses/XECSBullet.h"
 
 void UBulletSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 	BtCollisionConfig = new btDefaultCollisionConfiguration();
@@ -16,7 +17,13 @@ void UBulletSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 }
 void UBulletSubsystem::Deinitialize() {
 	Super::Deinitialize();
-
+	ResetSim();
+	/*
+	delete BtCollisionConfig;
+	delete BtCollisionDispatcher;
+	delete BtBroadphase;
+	delete mt;
+	delete BtWorld;*/
 }
 void UBulletSubsystem::Tick(float DeltaTime) {
 
@@ -91,16 +98,6 @@ void UBulletSubsystem::UpdateProcBody(AActor* Body, float Friction, TArray<FVect
 	ID = BtWorld->getNumCollisionObjects() - 1;
 }
 
-
-
-void UBulletSubsystem::AddRigidBody(AActor* Body, float Friction, float Restitution, int& ID, float mass)
-{
-	AddRigidBody(Body, GetCachedDynamicShapeData(Body, mass), Friction, Restitution);
-	ID = BtRigidBodies.Num() - 1;
-}
-
-
-
 void UBulletSubsystem::UpdatePlayertransform(AActor* player, int ID)
 {
 	BtWorld->getCollisionObjectArray()[ID]->setWorldTransform(BulletHelpers::ToBt(player->GetActorTransform()));
@@ -110,6 +107,11 @@ void UBulletSubsystem::UpdatePlayertransform(AActor* player, int ID)
 void UBulletSubsystem::AddImpulse(int ID, FVector Impulse, FVector Location)
 {
 	BtRigidBodies[ID]->applyImpulse(BulletHelpers::ToBtDir(Impulse, true), BulletHelpers::ToBtPos(Location));
+}
+
+void UBulletSubsystem::AddImpulse(const FXECSBulletObject& ID, FVector Impulse, FVector Location)
+{
+	ID.body->applyImpulse(BulletHelpers::ToBtDir(Impulse, true), BulletHelpers::ToBtPos(Location));
 }
 
 
@@ -445,6 +447,16 @@ const UBulletSubsystem::CachedDynamicShapeData& UBulletSubsystem::GetCachedDynam
 
 }
 
+
+FXECSBulletObject UBulletSubsystem::AddRigidBody(AActor* Body, float Friction, float Restitution, float mass)
+{
+	FXECSBulletObject object;
+	object.bulletID = BtRigidBodies.Num();
+	object.body =
+		AddRigidBody(Body, GetCachedDynamicShapeData(Body, mass), Friction, Restitution);
+	return object;
+}
+
 btRigidBody* UBulletSubsystem::AddRigidBody(AActor* Actor, const UBulletSubsystem::CachedDynamicShapeData& ShapeData, float Friction, float Restitution)
 {
 	return AddRigidBody(Actor, ShapeData.Shape, ShapeData.Inertia, ShapeData.Mass, Friction, Restitution);
@@ -452,9 +464,12 @@ btRigidBody* UBulletSubsystem::AddRigidBody(AActor* Actor, const UBulletSubsyste
 btRigidBody* UBulletSubsystem::AddRigidBody(AActor* Actor, btCollisionShape* CollisionShape, btVector3 Inertia, float Mass, float Friction, float Restitution)
 {
 	auto MotionState = new BulletCustomMotionState(Actor);
+	return AddRigidBodyWithCustomMotionState(MotionState, CollisionShape, Inertia, Mass, Friction, Restitution);
+}
+btRigidBody* UBulletSubsystem::AddRigidBodyWithCustomMotionState(BulletCustomMotionState* MotionState, btCollisionShape* CollisionShape, btVector3 Inertia, float Mass, float Friction, float Restitution)
+{
 	const btRigidBody::btRigidBodyConstructionInfo rbInfo(Mass * 10, MotionState, CollisionShape, Inertia * 10);
 	btRigidBody* Body = new btRigidBody(rbInfo);
-	Body->setUserPointer(Actor);
 	Body->setActivationState(ACTIVE_TAG);
 	Body->setDeactivationTime(0);
 
@@ -462,6 +477,46 @@ btRigidBody* UBulletSubsystem::AddRigidBody(AActor* Actor, btCollisionShape* Col
 	BtRigidBodies.Add(Body);
 
 	return Body;
+}
+
+FXECSBulletObject UBulletSubsystem::AddCylinderBody(AActor* Actor, const FVector& Inertia, const FTransform& startTransform, float wheelWidth, float wheelRadius, float Friction, float Restitution, float mass) {
+	FXECSBulletObject object;
+	object.bulletID = BtRigidBodies.Num();
+	btCollisionShape* m_wheelShape = new btCylinderShapeZ(btVector3(BulletHelpers::ToBtSize(wheelRadius), BulletHelpers::ToBtSize(wheelRadius), BulletHelpers::ToBtSize(wheelWidth * 0.5)));
+	btRigidBody* body = AddRigidBodyWithCustomMotionState(nullptr, m_wheelShape, BulletHelpers::ToBtMomentOfInertia(Inertia), mass, Friction, Restitution);
+	body->setContactStiffnessAndDamping(3, 1);
+	object.body = body;
+	return object;
+}
+
+FXECSBulletObject UBulletSubsystem::AddCylinderBody(const FTransform& startTransform, float wheelWidth, float wheelRadius, float Friction, float Restitution, float mass) {
+	btCollisionShape* m_wheelShape = new btCylinderShapeZ(btVector3(BulletHelpers::ToBtSize(wheelRadius), BulletHelpers::ToBtSize(wheelRadius), BulletHelpers::ToBtSize(wheelWidth * 0.5)));
+	return createRigidBody(mass, BulletHelpers::ToBt(startTransform), m_wheelShape, Friction, Restitution);
+}
+
+FXECSBulletObject UBulletSubsystem::createRigidBody(float mass, const btTransform& startTransform, btCollisionShape* shape, float Friction, float Restitution)
+{
+	FXECSBulletObject object;
+	object.bulletID = BtRigidBodies.Num();
+	btAssert((!shape || shape->getShapeType() != INVALID_SHAPE_PROXYTYPE));
+
+	//rigidbody is dynamic if and only if mass is non zero, otherwise static
+	bool isDynamic = (mass != 0.f);
+
+	btVector3 localInertia(0, 0, 0);
+	if (isDynamic)
+		shape->calculateLocalInertia(mass, localInertia);
+
+	btRigidBody::btRigidBodyConstructionInfo info(mass, 0, shape);
+	btRigidBody* body = new btRigidBody(info);
+	body->setWorldTransform(startTransform);
+	body->setContactStiffnessAndDamping(3000000, 100);
+
+	body->setUserIndex(-1);
+	BtWorld->addRigidBody(body);
+	object.body = body;
+	BtRigidBodies.Add(body);
+	return object;
 }
 
 void UBulletSubsystem::StepPhysics(float DeltaSeconds, int substeps)

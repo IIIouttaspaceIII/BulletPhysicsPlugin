@@ -47,6 +47,13 @@ public:
 		else
 			return btVector3(V.X, V.Y, V.Z);
 	}
+	inline static btVector3 ToBtMomentOfInertia(const FVector& V, bool AdjustScale = true)
+	{
+		if (AdjustScale)
+			return btVector3(V.X, V.Y, V.Z) * WORLD_TO_BULLET_SCALE * WORLD_TO_BULLET_SCALE;
+		else
+			return btVector3(V.X, V.Y, V.Z);
+	}
 	inline static FQuat ToUE(const btQuaternion& Q)
 	{
 		return FQuat(Q.x(), Q.y(), Q.z(), Q.w());

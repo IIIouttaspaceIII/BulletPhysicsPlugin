@@ -15,6 +15,7 @@
 #include <motionstate.h>
 #include <BulletMain.h>
 #include <ThirdParty/BulletPhysicsEngineLibrary/debug/btdebug.h>
+#include <ThirdParty/BulletPhysicsEngineLibrary/src/BulletDynamics/Dynamics/btRigidBody.h>
 #include "BulletSubsystem.generated.h"
 
 USTRUCT(BlueprintType)
@@ -26,6 +27,15 @@ struct Ftris
 	FVector c;
 	FVector d;
 
+};
+
+
+USTRUCT(BlueprintType)
+struct FXECSBulletObject {
+	GENERATED_USTRUCT_BODY()
+	btRigidBody* body;
+	UPROPERTY()
+	int bulletID;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPhysicsTick, float, DeltaTime);
@@ -105,11 +115,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
 	void UpdateProcBody(AActor* Body, float Friction, TArray<FVector> a, TArray<FVector> b, TArray<FVector> c, TArray<FVector> d, float Restitution, int& ID, int PrevID);
 	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
-	void AddRigidBody(AActor* Body, float Friction, float Restitution, int& ID, float mass);
+	FXECSBulletObject AddRigidBody(AActor* Body, float Friction, float Restitution, float mass);
+
+	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
+	FXECSBulletObject AddCylinderBody(AActor* Actor, const FVector& Inertia, const FTransform& startTransform, float wheelWidth, float wheelRadius, float Friction, float Restitution, float mass);
+
+	FXECSBulletObject AddCylinderBody(const FTransform& startTransform, float wheelWidth, float wheelRadius, float Friction, float Restitution, float mass);
 	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
 	void UpdatePlayertransform(AActor* player, int ID);
-	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
+	//UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
 	void AddImpulse(int ID, FVector Impulse, FVector Location);
+	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
+	void AddImpulse(const FXECSBulletObject& ID, FVector Impulse, FVector Location);
 	typedef const std::function<void(btCollisionShape* /*SingleShape*/, const FTransform& /*RelativeXform*/)>& PhysicsGeometryCallback;
 	void ExtractPhysicsGeometry(AActor* Actor, PhysicsGeometryCallback CB);
 
@@ -147,6 +164,8 @@ public:
 
 	btRigidBody* AddRigidBody(AActor* Actor, btCollisionShape* CollisionShape, btVector3 Inertia, float Mass, float Friction, float Restitution);
 	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
+
+	
 	void StepPhysics(float DeltaSeconds, int substeps);
 	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
 	void SetPhysicsState(int ID, FTransform transforms, FVector Velocity, FVector AngularVelocity, FVector& Force);
@@ -154,6 +173,9 @@ public:
 	void GetPhysicsState(int ID, FTransform& transforms, FVector& Velocity, FVector& AngularVelocity, FVector& Force);
 	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
 	FTransform GetPhysicsTransform(int ID);
+
+	btRigidBody* AddRigidBodyWithCustomMotionState(BulletCustomMotionState* MotionState, btCollisionShape* CollisionShape, btVector3 Inertia, float Mass, float Friction, float Restitution);
+	FXECSBulletObject createRigidBody(float mass, const btTransform& startTransform, btCollisionShape* shape, float Friction, float Restitution);
 	UFUNCTION(BlueprintCallable, Category = "Bullet Physics")
 	void ResetSim();
 
